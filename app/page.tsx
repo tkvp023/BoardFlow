@@ -1,65 +1,136 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Layers, ArrowRight, Hash } from 'lucide-react'
+import { generateUserId } from '@/lib/utils'
+
+const DURATION_OPTIONS = [
+  { label: '1 day', value: 1 },
+  { label: '7 days', value: 7 },
+  { label: '15 days', value: 15 },
+  { label: '30 days', value: 30 },
+]
+
+export default function HomePage() {
+  const router = useRouter()
+  const [boardName, setBoardName] = useState('')
+  const [durationDays, setDurationDays] = useState<number>(7)
+  const [joinId, setJoinId] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  async function createBoard() {
+    if (!boardName.trim()) return setError('Please enter a board name')
+    setLoading(true)
+    try {
+      const creatorId = generateUserId()
+      const res = await fetch('/api/rooms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: boardName.trim(), creator_id: creatorId, duration_days: durationDays }),
+      })
+      if (!res.ok) {
+        const payload = await res.json()
+        throw new Error(payload?.error || 'Failed to create board')
+      }
+      const data = await res.json()
+      router.push(`/board/${data.id}`)
+    } catch {
+      setError('Failed to create board. Try again.')
+      setLoading(false)
+    }
+  }
+
+  function joinBoard() {
+    if (!joinId.trim()) return setError('Please enter a board ID or URL')
+    const id = joinId.includes('/') ? joinId.split('/').pop() : joinId.trim()
+    router.push(`/board/${id}`)
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="min-h-screen flex flex-col items-center justify-center px-4 py-16">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center">
+          <Layers className="w-5 h-5 text-white" />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+        <h1 className="text-3xl font-bold text-white tracking-tight">BoardFlow</h1>
+      </div>
+      <p className="text-slate-400 mb-12 text-center">Where teams reflect and ship</p>
+
+      <div className="w-full max-w-md space-y-4">
+        <div className="bg-[#1a1d27] border border-[#2a2d3a] rounded-2xl p-6">
+          <h2 className="text-white font-semibold mb-4">Create a new board</h2>
+          <input
+            type="text"
+            placeholder="Sprint 42 Retro, Q1 Planning..."
+            value={boardName}
+            onChange={(e) => {
+              setBoardName(e.target.value)
+              setError('')
+            }}
+            onKeyDown={(e) => e.key === 'Enter' && createBoard()}
+            className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors mb-3"
+          />
+          <select
+            value={durationDays}
+            onChange={(e) => setDurationDays(Number(e.target.value))}
+            className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors mb-3"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            {DURATION_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                Auto delete after {option.label}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={createBoard}
+            disabled={loading}
+            className="w-full bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white font-medium py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
           >
-            Documentation
-          </a>
+            {loading ? 'Creating...' : 'Create Board'}
+            {!loading && <ArrowRight className="w-4 h-4" />}
+          </button>
         </div>
-      </main>
-    </div>
-  );
+
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-[#2a2d3a]" />
+          <span className="text-slate-500 text-sm">or</span>
+          <div className="flex-1 h-px bg-[#2a2d3a]" />
+        </div>
+
+        <div className="bg-[#1a1d27] border border-[#2a2d3a] rounded-2xl p-6">
+          <h2 className="text-white font-semibold mb-4">Join an existing board</h2>
+          <div className="flex gap-2">
+            <div className="flex-1 relative">
+              <Hash className="absolute left-3 top-3.5 w-4 h-4 text-slate-500" />
+              <input
+                type="text"
+                placeholder="Paste board ID or URL"
+                value={joinId}
+                onChange={(e) => {
+                  setJoinId(e.target.value)
+                  setError('')
+                }}
+                onKeyDown={(e) => e.key === 'Enter' && joinBoard()}
+                className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-xl pl-9 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+              />
+            </div>
+            <button
+              onClick={joinBoard}
+              className="bg-[#2a2d3a] hover:bg-[#3a3d4a] text-white font-medium px-5 rounded-xl transition-colors"
+            >
+              Join
+            </button>
+          </div>
+        </div>
+
+        {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+      </div>
+
+      <p className="mt-12 text-slate-600 text-sm">
+        No account needed · Free forever · Real-time collaboration
+      </p>
+    </main>
+  )
 }
